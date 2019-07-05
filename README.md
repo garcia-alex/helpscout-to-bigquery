@@ -6,11 +6,7 @@ HelpScout is a useful customer support platform, that allows you to track your i
 
 At Octopus Labs, we developed an open source HelpScout data extraction package in Python that connects to the most useful HelpScout end-points and posts the data to a Google BigQuery SQL database.
 
-An ideal API connection retains all the data from the API’s endpoints. This enables you to post-process the data however you want, rather than pre-empting all the end-use cases a-priori. This is the overarching philosophy behind our package.
-
-This package needs to balance two competing trade-offs; to be as lightweight and simple as possible on the HelpScout-end (the “get”), as well as the Google BigQuery-end (the “post”). In so doing, we’ve attempted to find a “Middle Way”, along with a few little tricks which we outline below. The data we post to Google BigQuery makes use of nested fields which is a very scalable way of storing data using Google’s latest database methodologies.
-
-This article briefly outlines the basic functionality of our package and serves as a starting point for further discussion. There is undoubtedly room for improvement, and we aim to make future iterations even more robust, lightweight and general purpose. This is our first open source project so thoughts and comments are very welcome!
+This package needs to balance two competing trade-offs; to be as lightweight and simple as possible on the HelpScout-end (the 'get'), as well as the Google BigQuery-end (the 'post'). In so doing, we’ve attempted to find a 'middle way', along with a few little tricks which we outline below. The data we post to Google BigQuery makes use of nested fields which is a very scalable way of storing data.
 
 # how it works
 _helpscoutAPI_: This module is the interface with the HelpScout API. Within this, we have the HelpSout class with two general-purpose API-calling methods. `get_helpscout_data` is a generic call, whilst `get_pages_breakdown` is used when there are multiple pages.
