@@ -5,11 +5,14 @@ from src.helpscoutDL import HelpScoutDataLoader, endpoints
 
 import pandas as pd
 
-today = datetime.today()  # Today
+N_WEEKS = 1
 
-# Last week:
-last_week_start = today - dt.timedelta(days=today.weekday(), weeks=1)  # Monday of previous week
-last_week_end = today - dt.timedelta(days=today.weekday())  # This Monday
+today = datetime.today()  # Today
+last_week_start = today - dt.timedelta(days=today.weekday(), weeks=N_WEEKS)  # Monday of previous week
+last_week_end = today - dt.timedelta(days=today.weekday(), weeks=N_WEEKS-1) # This Monday
+
+last_week_start = last_week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+last_week_end = last_week_end.replace(hour=0, minute=0, second=0, microsecond=0)
 
 # All time:
 dates = pd.date_range(start='2018-03-16',  # Enter the date you started using HelpScout
