@@ -2,10 +2,12 @@ import json
 import os
 import re
 
-from util.bigqueryAPI import BigQuery
-from util.helpscoutMethods import HelpScoutMethods
+from pandas.io.json import json_normalize
+import stringcase
 
 BGQ_DATASET = 'helpscout_prod'  # enter the name of your Google BigQuery Dataset
+from util.bigqueryAPI import BigQuery
+from util.helpscoutMethods import HelpScoutMethods
 
 # re_upload is True for non-date-dependent fields.
 # Where this is the case, the table is deleted and the full data is re-uploaded.
@@ -38,6 +40,7 @@ class HelpScoutDataLoader:
         self.endpoint = endpoint
         self.helpscoutmethod_obj = HelpScoutMethods(self.start, self.end)  # Initialise the helpscout methods
         self.bgq_obj = BigQuery(BGQ_DATASET, endpoint)  # BigQuery()  # initialize the BigQuery objs
+        self.table_schema = self.bgq_obj.get_table_schema()
 
     @staticmethod
     def convert_camel_case(name):
@@ -53,12 +56,53 @@ class HelpScoutDataLoader:
         """
         Get the data from a given endpoint and write it to a json file.
         """
-
         if endpoints[self.endpoint]['on']:
             print("endpoint:", self.endpoint)
 
-            d = eval('self.helpscoutmethod_obj.'+self.endpoint+'()')
+            d = eval('self.helpscoutfunc_obj.'+self.endpoint+'()')
 
+            # Here we delete any new fields that have been added to the HelpScout API,
+            # but are not in our existing schema.
+            schema = json_normalize(self.table_schema)
+
+            if 'fields' in list(schema.columns):
+                schema = schema[['type', 'name', 'mode', 'fields']]
+                schema_trim = schema.drop(['fields'], axis=1)
+
+                for i, val in enumerate(schema['name']):
+                    if schema.iloc[i]['type'] == 'RECORD':
+                        temp = json_normalize(schema['fields'][i])
+                        temp['name'] = schema.iloc[i]['name'] + '.' + temp['name']
+                        temp = temp[['type', 'name', 'mode']]
+                        schema_trim = schema_trim.append(temp)
+
+                schema_trim = schema_trim.sort_values(by='name')
+                schema_trim_names = list(schema_trim['name'])
+
+                d_list = list()
+                d_lookup = dict()
+
+                for col in json_normalize(d).columns:
+                    temp = stringcase.snakecase(col)
+                    d_list.append(temp)
+                    d_lookup[temp] = col
+                    if type(json_normalize(d)[col][0]) == list:
+                        if len(json_normalize(d)[col][0]) > 0:
+                            if type(json_normalize(d)[col][0][0]) == dict:
+                                for key in list(json_normalize(d)[col][0][0].keys()):
+                                    temp = stringcase.snakecase(col) + '.' + stringcase.snakecase(key)
+                                    d_list.append(temp)
+                                    d_lookup[temp] = col + '.' + key
+
+                for i in range(len(d)):
+                    try:
+                        for key, value in d_lookup.items():
+                            if key not in schema_trim_names:
+                                del d[i][value.split('.')[0]][0][value.split('.')[1]]
+                    except KeyError:
+                        pass
+
+            # removing the existing json file
             try:
                 os.remove(self.endpoint+".json")
             except OSError:
@@ -78,14 +122,14 @@ class HelpScoutDataLoader:
 
         if endpoints[self.endpoint]['on']:
             if endpoints[self.endpoint]['re_upload']:
-                # NB: please ensure the table exists in the dataset (even if blank), or this will fail
+                # NB: please ensure the table exists in the dataset, or this will fail
                 self.bgq_obj.delete_table()  # if re-upload is on, delete the table.
 
+            # Overwrite with sorted list
+            # (little hack - takes longest lines first therefore most likely to contain all sub-fields):
             with open(self.endpoint+'.json') as f:
                 content = f.readlines()
 
-            # Overwrite with sorted list "hack"
-            # takes longest lines first therefore most likely to contain all sub-fields
             sorted_list = sorted(content, key=len, reverse=True)
 
             try:
@@ -98,4 +142,4 @@ class HelpScoutDataLoader:
                     json.dump(json.loads(sorted_list[i]), outfile)
                     outfile.write('\n')
 
-            self.bgq_obj.local_json_bigquery(self.endpoint+".json")
+            self.bgq_obj.local_json_bigquery(self.endpoint+".json", autodetect=False, schema=self.table_schema)

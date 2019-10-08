@@ -54,24 +54,23 @@ class HelpScoutMethods:
         :return: the resulting dictionary
         """
         results = dict()
-        for j in range(len(l)):
-            for item in list(mapping.keys()):
-                if mapping[item] == RECORD:
-                    if item in l[j].keys():
-                        if l[j][item] == []:
-                            pass  # BigQuery does not accept empty records
+        for item in list(mapping.keys()):
+            if mapping[item] == RECORD:
+                if item in l.keys():
+                    if l[item] == []:
+                        pass  # BigQuery does not accept empty records
+                    else:
+                        if type(l[item]) != list:
+                            results[item] = [l[item]]
                         else:
-                            if type(l[j][item]) != list:
-                                results[item] = [l[j][item]]
-                            else:
-                                results[item] = l[j][item]
-                    else:
-                        pass  # results[item] = []
-                elif mapping[item] == FIELD:
-                    if item in l[j].keys():
-                        results[item] = l[j][item]
-                    else:
-                        results[item] = ""
+                            results[item] = l[item]
+                else:
+                    pass
+            elif mapping[item] == FIELD:
+                if item in l.keys():
+                    results[item] = l[item]
+                else:
+                    results[item] = ""
 
         return results
 
@@ -104,8 +103,9 @@ class HelpScoutMethods:
         d = list()
         for i in range(data['page']['totalPages']):
             conv = self.helpscout_obj.get_helpscout_data(url=url_conversations + pages[i])['_embedded']['conversations']
-            results = self.generate_json(conv, CONVERSATIONS_MAPPING)
-            d.append(results)
+            for j in range(len(conv)):
+                results = self.generate_json(conv[j], CONVERSATIONS_MAPPING)
+                d.append(results)
 
         return d
 
@@ -132,7 +132,7 @@ class HelpScoutMethods:
                     dict_2 = item['_embedded']
                     dict_1.update(dict_2)
 
-                    results = self.generate_json([dict_1], CUSTOMERS_MAPPING)
+                    results = self.generate_json(dict_1, CUSTOMERS_MAPPING)
 
                     d.append(results)
 
@@ -166,7 +166,8 @@ class HelpScoutMethods:
             data = self.helpscout_obj.get_helpscout_data(url=self.url_mailboxes + "/" + str(_id) + "/" + 'folders')
             for item in data['_embedded']['folders']:
                 item['mailboxId'] = _id
-                results = self.generate_json([item], FOLDERS_MAPPING)
+
+                results = self.generate_json(item, FOLDERS_MAPPING)
                 d.append(results)
 
         return d
@@ -189,7 +190,8 @@ class HelpScoutMethods:
             exclude = {"_embedded", "_links"}
             for item in mailbox_list:
                 __dict = self.without_keys(item, exclude)
-                results = self.generate_json([__dict], MAILBOXES_MAPPING)
+
+                results = self.generate_json(__dict, MAILBOXES_MAPPING)
                 d.append(results)
 
         return d
@@ -224,8 +226,9 @@ class HelpScoutMethods:
                     end=(date + dt.timedelta(1)).strftime("%Y-%m-%d"),
                 )['results']
 
-                results = self.generate_json(rating, RATINGS_MAPPING)
-                d.append(results)
+                for k in range(len(rating)):
+                    results = self.generate_json(rating[k], RATINGS_MAPPING)
+                    d.append(results)
 
             date += dt.timedelta(1)
 
@@ -269,8 +272,11 @@ class HelpScoutMethods:
                         url=URL_MAIN + 'conversations' + '/{}/threads'.format(conv_id)
                     )['_embedded']['threads']
 
-                    results = self.generate_json(conv_threads, THREADS_MAPPING)
-                    d.append(results)
+                    for i in range(len(conv_threads)):
+                        conv_threads[i]['conversation_id'] = conv_id
+
+                        results = self.generate_json(conv_threads[i], THREADS_MAPPING)
+                        d.append(results)
 
         return d
 
@@ -292,7 +298,8 @@ class HelpScoutMethods:
             exclude = {"_links"}
             for item in user_list:
                 __dict = self.without_keys(item, exclude)
-                results = self.generate_json([__dict], USERS_MAPPING)
+
+                results = self.generate_json(__dict, USERS_MAPPING)
                 d.append(results)
 
         return d

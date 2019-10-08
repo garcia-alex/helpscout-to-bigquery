@@ -26,17 +26,21 @@ class BigQuery:
         self.__client.delete_table(self.__table_obj)
         print("Deleted table")
 
-    def local_json_bigquery(self, json_file):
+    def local_json_bigquery(self, json_file, autodetect=True, schema=None):
         """
         Post to BigQuery from a local json file
         :param json_file: The json file with HelpScout data to post
+        :param autodetect: autodetect the schema (default is true)
+        :param schema: a user-defined schema in the json format. It is properly parsed within the method.
         """
 
         job_config = bigquery.LoadJobConfig()
         job_config.source_format = bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
-        job_config.autodetect = True
+        job_config.autodetect = autodetect  # True
+        if schema is not None:
+            job_config.schema=self.parse_bq_json_schema(schema)
 
-        # Chanege the location to whatever is relevant to you
+        # Change the location to whatever is relevant to you
         with open(json_file, 'r+b') as source_file:
             job = self.__client.load_table_from_file(
                 source_file,
@@ -47,5 +51,4 @@ class BigQuery:
 
         job.result()  # Waits until the table load is complete
         print('Job Finished\n')
-
         print('Loaded {} rows into {}:{}'.format(job.output_rows, self.dataset_name, self.table_name))
